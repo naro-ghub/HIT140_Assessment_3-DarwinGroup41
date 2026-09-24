@@ -47,3 +47,13 @@ team_matches = team_matches.sort_values("match_id", kind="stable").reset_index(d
 print("Team-match rows:", len(team_matches))
 print(team_matches.head(6).to_string(index=False))
 print("Two rows per match:", team_matches.groupby("match_id").size().eq(2).all())
+
+for column in ["team", "opponent"]:
+    team_matches[column] = team_matches[column].str.strip()
+    team_matches[column] = team_matches[column].str.replace(
+        r"^[a-z]{2,3}\s+|\s+[a-z]{2,3}$", "", regex=True
+    )
+
+print("\nCleaned team names:")
+print(team_matches.head(6).to_string(index=False))
+print("Unique teams:", team_matches["team"].nunique())
