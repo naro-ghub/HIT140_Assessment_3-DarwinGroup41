@@ -81,3 +81,47 @@ print("\nBase dataset checks passed.")
 output_path = Path(__file__).parent / "team_matches_208_rows.csv"
 team_matches.to_csv(output_path, index=False, encoding="utf-8")
 print("Saved:", output_path)
+
+# Check pre-match predictor calculations using Mexico as an example
+# Load Mexico's historical results
+history_path = Path(__file__).parent / "Mexico_FIFA2026stats.csv"
+history = pd.read_csv(history_path, comment="#")
+history["Date"] = pd.to_datetime(history["Date"], errors="raise")
+
+# Calculate goal-based predictors from the five preceding matches
+def calculate_recent_form(team_history, match_date):
+    previous = team_history.loc[
+        (team_history["Date"] < match_date)
+        & team_history["GF"].notna()
+        & team_history["GA"].notna()
+    ].sort_values("Date").tail(5)
+
+    assert len(previous) == 5, "Five previous matches are required."
+
+    return {
+        "team_scored_last5": previous["GF"].mean(),
+        "team_conceded_last5": previous["GA"].mean(),
+        "team_scoring_std_last5": previous["GF"].std(ddof=1)
+    }
+
+# Check the predictors for each of Mexico's World Cup matches
+world_cup_dates = history.loc[
+    history["Comp"] == "World Cup", "Date"
+].sort_values()
+
+for match_date in world_cup_dates:
+    form = calculate_recent_form(history, match_date)
+
+    print("\nMexico — match date:", match_date.strftime("%Y-%m-%d"))
+    print(
+        "Predictor 4: Average goals scored:",
+        round(form["team_scored_last5"], 2)
+    )
+    print(
+        "Predictor 5: Average goals conceded:",
+        round(form["team_conceded_last5"], 2)
+    )
+    print(
+        "Predictor 8: Scoring consistency (SD):",
+        round(form["team_scoring_std_last5"], 2)
+    )
