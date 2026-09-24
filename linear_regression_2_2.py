@@ -57,3 +57,7 @@ for column in ["team", "opponent"]:
 print("\nCleaned team names:")
 print(team_matches.head(6).to_string(index=False))
 print("Unique teams:", team_matches["team"].nunique())
+
+output_path = Path(__file__).parent / "team_matches_208_rows.csv"
+team_matches.to_csv(output_path, index=False, encoding="utf-8")
+print("Saved:", output_path)
