@@ -58,6 +58,26 @@ print("\nCleaned team names:")
 print(team_matches.head(6).to_string(index=False))
 print("Unique teams:", team_matches["team"].nunique())
 
+# Predictor 1: Identify group-stage and knockout-stage matches
+team_matches["is_knockout"] = (
+    team_matches["round"] != "Group stage"
+).astype(int)
+
+print("\nPredictor 1: Knockout stage (0 = group stage, 1 = knockout)")
+print(team_matches["is_knockout"].value_counts())
+
+# Validate dates, row counts, duplicates and missing values
+team_matches["date"] = pd.to_datetime(team_matches["date"], errors="raise")
+
+assert len(team_matches) == 208, "Expected exactly 208 team-match rows."
+assert team_matches["match_id"].nunique() == 104, "Expected 104 matches."
+assert team_matches.groupby("match_id").size().eq(2).all(), "Each match needs two rows."
+
+assert not team_matches.duplicated(["match_id", "team"]).any(), "Duplicate team in a match."
+assert not team_matches.isna().any().any(), "Missing values found in the base dataset."
+
+print("\nBase dataset checks passed.")
+
 output_path = Path(__file__).parent / "team_matches_208_rows.csv"
 team_matches.to_csv(output_path, index=False, encoding="utf-8")
 print("Saved:", output_path)
