@@ -12,6 +12,7 @@ matches = pd.read_csv(file_path, comment="#")
 print(matches.head())
 print("Raw rows", len(matches))
 
+#cleaning data
 print("Empty rows:", matches.isna().all(axis=1).sum())
 matches = matches.dropna(how="all").copy()
 
@@ -31,3 +32,18 @@ matches["home_goals"] = goals[0].astype(int)
 matches["away_goals"] = goals[1].astype(int)
 
 print(matches[["Score", "home_goals", "away_goals"]].tail(15).to_string(index=False))
+
+matches = matches.reset_index(drop=True)
+matches["match_id"] = matches.index + 1
+
+home_rows = matches[["match_id", "Date", "Round", "Home", "Away", "home_goals"]].copy()
+home_rows.columns = ["match_id", "date", "round", "team", "opponent", "goals_scored"]
+
+away_rows = matches[["match_id", "Date", "Round", "Away", "Home", "away_goals"]].copy()
+away_rows.columns = ["match_id", "date", "round", "team", "opponent", "goals_scored"]
+
+team_matches = pd.concat([home_rows, away_rows], ignore_index=True)
+team_matches = team_matches.sort_values("match_id", kind="stable").reset_index(drop=True)
+print("Team-match rows:", len(team_matches))
+print(team_matches.head(6).to_string(index=False))
+print("Two rows per match:", team_matches.groupby("match_id").size().eq(2).all())
