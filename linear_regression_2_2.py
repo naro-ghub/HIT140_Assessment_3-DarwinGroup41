@@ -321,3 +321,27 @@ assert not full_history.duplicated(
 ).any(), "Duplicate historical team-match found."
 
 print("\nCombined team-match history:", len(full_history))
+
+# Calculate recent form using only matches before the prediction date
+def get_recent_form(team_name, match_date):
+    previous = full_history.loc[
+        (full_history["team"] == team_name)
+        & (full_history["date"] < match_date)
+    ].sort_values("date").tail(5)
+
+    assert len(previous) == 5, f"Five previous matches needed for {team_name}."
+
+    return {
+        "scored": previous["goals_scored"].mean(),
+        "conceded": previous["goals_conceded"].mean(),
+        "scoring_std": previous["goals_scored"].std(ddof=1)
+    }
+
+
+# Check that Mexico's first World Cup result contributes to its second match
+mexico_form = get_recent_form("Mexico", pd.Timestamp("2026-06-18"))
+
+print("\nMexico: predictors before 18 June 2026")
+print("Predictor 4: Average goals scored:", round(mexico_form["scored"], 2))
+print("Predictor 5: Average goals conceded:", round(mexico_form["conceded"], 2))
+print("Predictor 8: Scoring consistency (SD):", round(mexico_form["scoring_std"], 2))
