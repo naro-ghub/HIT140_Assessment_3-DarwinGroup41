@@ -136,7 +136,8 @@ history_files = [
     "2026_WorldCupQualifiers_AFC(M).csv",
     "2026_WorldCupQualifier_CAF(M).csv",
     "2026_WorldCupQualifiers_CONCACAF.csv",
-    "2025_Africa_Cup_of_Nations.csv"
+    "2025_Africa_Cup_of_Nations.csv",
+    "WorldCupQualifiers_Intercontinental_2026.csv"
 ]
 
 history_tables = []
@@ -189,3 +190,32 @@ print(
 all_history = all_history.loc[~awarded].copy()
 
 print("Historical rows after excluding awarded results:", len(all_history))
+
+# Clean historical team names so they match the World Cup dataset
+for column in ["Home", "Away"]:
+    all_history[column] = all_history[column].str.strip()
+    all_history[column] = all_history[column].str.replace(
+        r"^[a-z]{2,3}\s+|\s+[a-z]{2,3}$", "", regex=True
+    )
+    all_history[column] = all_history[column].replace(
+        {"United States": "USA"}
+    )
+
+# Extract match goals, excluding penalty-shootout numbers
+history_goals = all_history["Score"].str.extract(
+    r"(\d+)\s*[\u2013-]\s*(\d+)"
+)
+
+# Stop if any score could not be understood
+assert not history_goals.isna().any().any(), "Unrecognised historical score."
+
+all_history["home_goals"] = history_goals[0].astype(int)
+all_history["away_goals"] = history_goals[1].astype(int)
+
+print("\nCleaned historical scores:")
+print(
+    all_history[
+        ["Date", "Home", "Away", "Score", "home_goals", "away_goals"]
+    ].head(6).to_string(index=False)
+)
+
