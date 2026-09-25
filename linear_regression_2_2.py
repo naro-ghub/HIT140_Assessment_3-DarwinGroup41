@@ -78,9 +78,7 @@ assert not team_matches.isna().any().any(), "Missing values found in the base da
 
 print("\nBase dataset checks passed.")
 
-output_path = Path(__file__).parent / "team_matches_208_rows.csv"
-team_matches.to_csv(output_path, index=False, encoding="utf-8")
-print("Saved:", output_path)
+
 
 # Check pre-match predictor calculations using Mexico as an example
 # Load Mexico's historical results
@@ -345,3 +343,35 @@ print("\nMexico: predictors before 18 June 2026")
 print("Predictor 4: Average goals scored:", round(mexico_form["scored"], 2))
 print("Predictor 5: Average goals conceded:", round(mexico_form["conceded"], 2))
 print("Predictor 8: Scoring consistency (SD):", round(mexico_form["scoring_std"], 2))
+
+# Calculate predictors 4–8 for every World Cup team-match row
+form_rows = []
+
+for _, match in team_matches.iterrows():
+    team_form = get_recent_form(match["team"], match["date"])
+    opponent_form = get_recent_form(match["opponent"], match["date"])
+
+    form_rows.append({
+        "team_scored_last5": team_form["scored"],
+        "team_conceded_last5": team_form["conceded"],
+        "opponent_scored_last5": opponent_form["scored"],
+        "opponent_conceded_last5": opponent_form["conceded"],
+        "team_scoring_std_last5": team_form["scoring_std"]
+    })
+
+# Attach the calculated predictors to the corresponding rows
+form_table = pd.DataFrame(form_rows, index=team_matches.index)
+team_matches[form_table.columns] = form_table
+
+assert not form_table.isna().any().any(), "Missing recent-form values."
+
+print("\nRecent-form rows calculated:", len(form_table))
+print(form_table.head(6).round(2).to_string(index=False))
+
+
+
+
+
+output_path = Path(__file__).parent / "team_matches_208_rows.csv"
+team_matches.to_csv(output_path, index=False, encoding="utf-8")
+print("Saved:", output_path)
