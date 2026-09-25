@@ -135,7 +135,8 @@ history_files = [
     "2026_WorldCupQualifier_CAF(M).csv",
     "2026_WorldCupQualifiers_CONCACAF.csv",
     "2025_Africa_Cup_of_Nations.csv",
-    "WorldCupQualifiers_Intercontinental_2026.csv"
+    "WorldCupQualifiers_Intercontinental_2026.csv",
+    "additional_historical_matches.csv"
 ]
 
 history_tables = []
@@ -368,7 +369,20 @@ assert not form_table.isna().any().any(), "Missing recent-form values."
 print("\nRecent-form rows calculated:", len(form_table))
 print(form_table.head(6).round(2).to_string(index=False))
 
+# Review the selected historical matches before each team's World Cup opener
+teams_to_review = [
+    "Australia", "Cabo Verde", "Curaçao", "New Zealand",
+    "Uzbekistan", "Qatar", "Jordan", "Iraq", "IR Iran"
+]
 
+for team_name in teams_to_review:
+    selected_matches = opening_last5.loc[
+        opening_last5["team"] == team_name,
+        ["date", "opponent", "goals_scored", "goals_conceded"]
+    ].sort_values("date")
+
+    print("\nOpening-match history:", team_name)
+    print(selected_matches.to_string(index=False))
 
 
 
