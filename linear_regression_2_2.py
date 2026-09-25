@@ -201,7 +201,7 @@ for column in ["Home", "Away"]:
         {"United States": "USA"}
     )
 
-# Extract match goals, excluding penalty-shootout numbers
+# Extract match goals, excluding penalty shootout numbers
 history_goals = all_history["Score"].str.extract(
     r"(\d+)\s*[\u2013-]\s*(\d+)"
 )
@@ -219,3 +219,31 @@ print(
     ].head(6).to_string(index=False)
 )
 
+# Reshape historical matches into one row per team per match
+history_home = all_history[
+    ["Date", "Home", "Away", "home_goals", "away_goals", "source_file"]
+].copy()
+
+history_home.columns = [
+    "date", "team", "opponent", "goals_scored", "goals_conceded", "source_file"
+]
+
+history_away = all_history[
+    ["Date", "Away", "Home", "away_goals", "home_goals", "source_file"]
+].copy()
+
+history_away.columns = [
+    "date", "team", "opponent", "goals_scored", "goals_conceded", "source_file"
+]
+
+# Combine both teams perspectives and put them according to the dates
+historical_team_matches = pd.concat(
+    [history_home, history_away], ignore_index=True
+)
+
+historical_team_matches = historical_team_matches.sort_values(
+    ["team", "date"]
+).reset_index(drop=True)
+
+print("\nHistorical team-match rows:", len(historical_team_matches))
+print(historical_team_matches.head(6).to_string(index=False))
