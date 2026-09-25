@@ -8,8 +8,8 @@ FIFA World Cup 2026 prediction project.
 
 - Regression 2.2: Predict goals scored by one team per match.
 1. Knockout stage
-2. Team FIFA points
-3. Opponent FIFA points
+2. Team win rate (previous 5 matches)
+3. opponent clean sheet rate (previous 5 matches)
 4. Team average goals scored (previous 5 matches)
 5. Team average goals conceded (previous 5 matches)
 6. Opponent average goals scored (previous 5 matches)

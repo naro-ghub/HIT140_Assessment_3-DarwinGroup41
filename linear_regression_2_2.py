@@ -321,7 +321,7 @@ assert not full_history.duplicated(
 
 print("\nCombined team-match history:", len(full_history))
 
-# Calculate recent form using only matches before the prediction date
+# Calculate recent form using only the five matches before the prediction date
 def get_recent_form(team_name, match_date):
     previous = full_history.loc[
         (full_history["team"] == team_name)
@@ -330,12 +330,19 @@ def get_recent_form(team_name, match_date):
 
     assert len(previous) == 5, f"Five previous matches needed for {team_name}."
 
+    # Draws decided by penalty shootouts remain draws for this calculation.
+    wins = previous["goals_scored"] > previous["goals_conceded"]
+
+    # A clean sheet means conceding zero goals.
+    clean_sheets = previous["goals_conceded"] == 0
+
     return {
         "scored": previous["goals_scored"].mean(),
         "conceded": previous["goals_conceded"].mean(),
-        "scoring_std": previous["goals_scored"].std(ddof=1)
+        "scoring_std": previous["goals_scored"].std(ddof=1),
+        "win_rate": wins.mean(),
+        "clean_sheet_rate": clean_sheets.mean()
     }
-
 
 # Check that Mexico's first World Cup result contributes to its second match
 mexico_form = get_recent_form("Mexico", pd.Timestamp("2026-06-18"))
@@ -345,7 +352,7 @@ print("Predictor 4: Average goals scored:", round(mexico_form["scored"], 2))
 print("Predictor 5: Average goals conceded:", round(mexico_form["conceded"], 2))
 print("Predictor 8: Scoring consistency (SD):", round(mexico_form["scoring_std"], 2))
 
-# Calculate predictors 4–8 for every World Cup team-match row
+# Calculate predictors 2–8 for every World Cup team-match row
 form_rows = []
 
 for _, match in team_matches.iterrows():
@@ -353,10 +360,19 @@ for _, match in team_matches.iterrows():
     opponent_form = get_recent_form(match["opponent"], match["date"])
 
     form_rows.append({
+        # Predictor 2: Team's win rate over its previous five matches
+        "team_win_rate_last5": team_form["win_rate"],
+
+        # Predictor 3: Opponent's clean-sheet rate over its previous five matches
+        "opponent_clean_sheet_rate_last5": opponent_form["clean_sheet_rate"],
+
+        # Predictors 4–7: Average goals scored and conceded
         "team_scored_last5": team_form["scored"],
         "team_conceded_last5": team_form["conceded"],
         "opponent_scored_last5": opponent_form["scored"],
         "opponent_conceded_last5": opponent_form["conceded"],
+
+        # Predictor 8: Standard deviation of the team's goals scored
         "team_scoring_std_last5": team_form["scoring_std"]
     })
 
@@ -384,7 +400,32 @@ for team_name in teams_to_review:
     print("\nOpening-match history:", team_name)
     print(selected_matches.to_string(index=False))
 
+# Select exactly eight explanatory variables for modelling
+predictor_columns = [
+    "is_knockout",
+    "team_win_rate_last5",
+    "opponent_clean_sheet_rate_last5",
+    "team_scored_last5",
+    "team_conceded_last5",
+    "opponent_scored_last5",
+    "opponent_conceded_last5",
+    "team_scoring_std_last5"
+]
 
+# Check that all 208 rows have all eight predictors
+assert team_matches[predictor_columns].shape == (208, 8)
+assert not team_matches[predictor_columns].isna().any().any()
+
+# Both rates must be proportions between zero and one
+assert team_matches["team_win_rate_last5"].between(0, 1).all()
+assert team_matches["opponent_clean_sheet_rate_last5"].between(0, 1).all()
+
+# Print a numbered label for each predictor
+print("\nCompleted explanatory variables:")
+for number, column in enumerate(predictor_columns, start=1):
+    print(f"Predictor {number}: {column}")
+
+print("\nAll eight predictors populated for 208 rows.")
 
 output_path = Path(__file__).parent / "team_matches_208_rows.csv"
 team_matches.to_csv(output_path, index=False, encoding="utf-8")
