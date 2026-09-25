@@ -247,3 +247,40 @@ historical_team_matches = historical_team_matches.sort_values(
 
 print("\nHistorical team-match rows:", len(historical_team_matches))
 print(historical_team_matches.head(6).to_string(index=False))
+
+# Find each team opening World Cup match date
+opening_dates = (
+    team_matches.groupby("team")["date"]
+    .min()
+    .rename("opening_date")
+    .reset_index()
+)
+
+# Keep historical records for World Cup teams and attach their opening dates
+opening_history = historical_team_matches.merge(
+    opening_dates, on="team", how="inner", validate="many_to_one"
+)
+
+# Only use results from before the team's opening match
+opening_history = opening_history.loc[
+    opening_history["date"] < opening_history["opening_date"]
+].copy()
+
+# Select the five latest AVAILABLE results per team for review
+opening_last5 = (
+    opening_history.sort_values(["team", "date"])
+    .groupby("team")
+    .tail(5)
+)
+
+print("\nOpening-match history review:")
+print("Teams:", opening_last5["team"].nunique())
+print("Rows:", len(opening_last5))
+
+print(
+    opening_last5.loc[
+        opening_last5["team"] == "Mexico",
+        ["date", "team", "opponent", "goals_scored", "goals_conceded"]
+    ].to_string(index=False)
+)
+
