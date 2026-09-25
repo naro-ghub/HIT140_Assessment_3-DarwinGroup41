@@ -266,7 +266,7 @@ opening_history = opening_history.loc[
     opening_history["date"] < opening_history["opening_date"]
 ].copy()
 
-# Select the five latest AVAILABLE results per team for review
+# Select the five latest results per team for review
 opening_last5 = (
     opening_history.sort_values(["team", "date"])
     .groupby("team")
@@ -284,3 +284,40 @@ print(
     ].to_string(index=False)
 )
 
+# Look up the opponent goals to obtain each team's goals conceded
+opponent_results = team_matches[
+    ["match_id", "team", "goals_scored"]
+].rename(columns={
+    "team": "opponent",
+    "goals_scored": "goals_conceded"
+})
+
+world_cup_history = team_matches.merge(
+    opponent_results,
+    on=["match_id", "opponent"],
+    validate="one_to_one"
+)
+
+# Give World Cup history the same columns as the other historical records
+world_cup_history["source_file"] = "world_cup_2026_data.csv"
+
+history_columns = [
+    "date", "team", "opponent",
+    "goals_scored", "goals_conceded", "source_file"
+]
+
+# Combine historical internationals and World Cup results
+full_history = pd.concat(
+    [
+        historical_team_matches[history_columns],
+        world_cup_history[history_columns]
+    ],
+    ignore_index=True
+).sort_values(["team", "date"]).reset_index(drop=True)
+
+# Check that no team-match appears twice
+assert not full_history.duplicated(
+    ["date", "team", "opponent"]
+).any(), "Duplicate historical team-match found."
+
+print("\nCombined team-match history:", len(full_history))
