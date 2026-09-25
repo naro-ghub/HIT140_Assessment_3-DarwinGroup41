@@ -125,3 +125,67 @@ for match_date in world_cup_dates:
         "Predictor 8: Scoring consistency (SD):",
         round(form["team_scoring_std_last5"], 2)
     )
+    
+# Load historical datasets used to calculate pre-match predictors
+base_path = Path(__file__).parent
+
+history_files = [
+    "International_friendlies_2025.csv",
+    "International_friendlies_2026.csv",
+    "2026_WorldCupQualifiers-UEFA(M).csv",
+    "2026_WorldCupQualifiers_AFC(M).csv",
+    "2026_WorldCupQualifier_CAF(M).csv",
+    "2026_WorldCupQualifiers_CONCACAF.csv",
+    "2025_Africa_Cup_of_Nations.csv"
+]
+
+history_tables = []
+
+for filename in history_files:
+    table = pd.read_csv(base_path / filename, comment="#")
+    table["source_file"] = filename
+    history_tables.append(table)
+    print(filename, ":", len(table), "rows")
+
+# Combine the tables and clean historical data
+all_history = pd.concat(history_tables, ignore_index=True)
+
+print("\nCombined raw historical rows:", len(all_history))
+
+before_cleaning = len(all_history)
+
+all_history = all_history.dropna(
+    subset=["Date", "Home", "Away"], how="all"
+).copy()
+
+print("\nSeparator rows removed:", before_cleaning - len(all_history))
+
+# Remove fixtures without scores, including cancelled and unplayed games and convert dates to select matches played before each World Cup game
+missing_scores = all_history["Score"].isna()
+print("Fixtures without scores removed:", missing_scores.sum())
+
+all_history = all_history.loc[~missing_scores].copy()
+
+all_history["Date"] = pd.to_datetime(
+    all_history["Date"], errors="raise"
+)
+
+print("Historical rows with scores:", len(all_history))
+
+# Identify results that may differ from goals actually scored
+awarded = all_history["Notes"].str.contains(
+    "awarded", case=False, na=False
+)
+
+print("\nAwarded results requiring review:", awarded.sum())
+
+print(
+    all_history.loc[
+        awarded, ["Date", "Home", "Score", "Away", "Notes"]
+    ].to_string(index=False)
+)
+
+# Exclude awarded scores from goal-based predictor calculations and keeping the original records unchanged in the raw CSV files
+all_history = all_history.loc[~awarded].copy()
+
+print("Historical rows after excluding awarded results:", len(all_history))
