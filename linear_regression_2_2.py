@@ -7,6 +7,10 @@ import pandas as pd
 import sys
 import matplotlib.pyplot as plt
 
+from sklearn.linear_model import LinearRegression
+from sklearn.dummy import DummyRegressor
+from sklearn.metrics import r2_score
+
 sys.stdout.reconfigure(encoding="utf-8")
 
 # Import tools and enable special characters in terminal output
@@ -556,3 +560,23 @@ if strong_pairs:
     print(pd.DataFrame(strong_pairs).to_string(index=False))
 else:
     print("No predictor pairs reach this threshold.")
+    
+# Fit a baseline that predicts the average goals scored in the training data
+baseline_model = DummyRegressor(strategy="mean")
+baseline_model.fit(X_train, y_train)
+
+# Train linear regression using the eight predictors and actual goals scored
+linear_model = LinearRegression()
+linear_model.fit(X_train, y_train)
+
+# Display the coefficients learned by the linear regression model
+coefficient_table = pd.DataFrame({
+    "Predictor": predictor_columns,
+    "Coefficient": linear_model.coef_
+})
+
+print("\nLinear regression coefficients:")
+print(coefficient_table.round(3).to_string(index=False))
+print("Intercept:", round(linear_model.intercept_, 3))
+print("Baseline prediction:", round(y_train.mean(), 3))
+
