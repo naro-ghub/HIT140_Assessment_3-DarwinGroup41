@@ -523,3 +523,36 @@ fig.savefig(
     bbox_inches="tight"
 )
 plt.show()
+
+# Examine linear relationships between the predictors and goals scored
+correlations = train_data[eda_columns].corr()
+
+print("\nPredictor correlations with goals scored:")
+print(
+    correlations["goals_scored"]
+    .drop("goals_scored")
+    .sort_values(ascending=False)
+    .round(3)
+)
+
+# Check correlations between predictors for potentially overlapping information
+predictor_correlations = train_data[predictor_columns].corr()
+
+print("\nStrong predictor correlations (absolute correlation >= 0.70):")
+strong_pairs = []
+
+for i, first in enumerate(predictor_columns):
+    for second in predictor_columns[i + 1:]:
+        correlation = predictor_correlations.loc[first, second]
+
+        if abs(correlation) >= 0.70:
+            strong_pairs.append({
+                "Predictor 1": first,
+                "Predictor 2": second,
+                "Correlation": round(correlation, 3)
+            })
+
+if strong_pairs:
+    print(pd.DataFrame(strong_pairs).to_string(index=False))
+else:
+    print("No predictor pairs reach this threshold.")
