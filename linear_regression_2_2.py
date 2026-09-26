@@ -11,6 +11,10 @@ from sklearn.linear_model import LinearRegression
 from sklearn.dummy import DummyRegressor
 from sklearn.metrics import r2_score
 
+from sklearn.base import clone
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+
 sys.stdout.reconfigure(encoding="utf-8")
 
 # Import tools and enable special characters in terminal output
@@ -580,3 +584,54 @@ print(coefficient_table.round(3).to_string(index=False))
 print("Intercept:", round(linear_model.intercept_, 3))
 print("Baseline prediction:", round(y_train.mean(), 3))
 
+# Create three chronological validation rounds using training dates only
+training_dates = train_data["date"].drop_duplicates().sort_values().to_numpy()
+time_split = TimeSeriesSplit(n_splits=3)
+
+models = {
+    "Mean baseline": baseline_model,
+    "Linear regression": linear_model
+}
+
+validation_rows = []
+
+# Keep all rows from the same date together in each validation round
+for fold, (train_idx, valid_idx) in enumerate(
+    time_split.split(training_dates), start=1
+):
+    fold_train = train_data.loc[
+        train_data["date"].isin(training_dates[train_idx])
+    ]
+    fold_valid = train_data.loc[
+        train_data["date"].isin(training_dates[valid_idx])
+    ]
+
+    assert fold_train["date"].max() < fold_valid["date"].min()
+
+    # Fit fresh models using only this round's earlier matches
+    for name, model in models.items():
+        fold_model = clone(model)
+        fold_model.fit(
+            fold_train[predictor_columns],
+            fold_train["goals_scored"]
+        )
+
+        predictions = fold_model.predict(fold_valid[predictor_columns])
+        actual = fold_valid["goals_scored"]
+
+        # Compare predictions with the actual goals in the later matches
+        validation_rows.append({
+            "Fold": fold,
+            "Model": name,
+            "Training rows": len(fold_train),
+            "Validation rows": len(fold_valid),
+            "R2": r2_score(actual, predictions),
+            "MAE": mean_absolute_error(actual, predictions),
+            "RMSE": mean_squared_error(actual, predictions) ** 0.5
+        })
+
+# Display results separately for each validation round
+validation_results = pd.DataFrame(validation_rows)
+
+print("\nChronological validation results:")
+print(validation_results.round(3).to_string(index=False))
