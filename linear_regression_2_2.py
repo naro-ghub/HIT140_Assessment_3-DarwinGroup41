@@ -1,59 +1,69 @@
 # Regression 2.2: Predict goals scored by one team per FIFA World Cup 2026 match
 print("Linear Regression 2.2 Project")
 
+# Import tools and enable special characters in terminal output
 from pathlib import Path
 import pandas as pd
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
+# Import tools and enable special characters in terminal output
 file_path = Path(__file__).parent / "world_cup_2026_data.csv"
 matches = pd.read_csv(file_path, comment="#")
 print(matches.head())
 print("Raw rows", len(matches))
 
-#cleaning data
+# Remove completely empty rows and check the number of matches in each round
 print("Empty rows:", matches.isna().all(axis=1).sum())
 matches = matches.dropna(how="all").copy()
 
 print("Match rows:", len(matches))
 print(matches["Round"].value_counts())
 
+# Inspect score formats and match notes before extracting goals
 print("\nScore formats:")
 print(matches["Score"].unique())
 print(matches[["Home", "Score", "Away", "Notes"]].tail(8).to_string(index=False))
 
+# Extract home and away goals, excluding shootout totals, and check for unmatched scores
 goals = matches["Score"].str.extract(r"(\d+)\s*[\u2013-]\s*(\d+)")
 unmatched = goals.isna().any(axis=1)
 print("Unmatched scores:", unmatched.sum())
 print(matches.loc[unmatched, "Score"].apply(repr).to_string())
 
+# Store the extracted goals as integers and inspect the results
 matches["home_goals"] = goals[0].astype(int)
 matches["away_goals"] = goals[1].astype(int)
 
 print(matches[["Score", "home_goals", "away_goals"]].tail(15).to_string(index=False))
 
+# Reset the row index and assign a unique ID to each match
 matches = matches.reset_index(drop=True)
 matches["match_id"] = matches.index + 1
 
+# Create one dataset from the home team's perspective and another from the away team's
 home_rows = matches[["match_id", "Date", "Round", "Home", "Away", "home_goals"]].copy()
 home_rows.columns = ["match_id", "date", "round", "team", "opponent", "goals_scored"]
 
 away_rows = matches[["match_id", "Date", "Round", "Away", "Home", "away_goals"]].copy()
 away_rows.columns = ["match_id", "date", "round", "team", "opponent", "goals_scored"]
 
+# Combine both datasets, group rows by match ID and check that each match has two rows
 team_matches = pd.concat([home_rows, away_rows], ignore_index=True)
 team_matches = team_matches.sort_values("match_id", kind="stable").reset_index(drop=True)
 print("Team-match rows:", len(team_matches))
 print(team_matches.head(6).to_string(index=False))
 print("Two rows per match:", team_matches.groupby("match_id").size().eq(2).all())
 
+# Remove extra spaces and country codes from team and opponent names
 for column in ["team", "opponent"]:
     team_matches[column] = team_matches[column].str.strip()
     team_matches[column] = team_matches[column].str.replace(
         r"^[a-z]{2,3}\s+|\s+[a-z]{2,3}$", "", regex=True
     )
 
+# Preview the cleaned names and count the unique teams
 print("\nCleaned team names:")
 print(team_matches.head(6).to_string(index=False))
 print("Unique teams:", team_matches["team"].nunique())
@@ -430,3 +440,45 @@ print("\nAll eight predictors populated for 208 rows.")
 output_path = Path(__file__).parent / "team_matches_208_rows.csv"
 team_matches.to_csv(output_path, index=False, encoding="utf-8")
 print("Saved:", output_path)
+
+# training/test split code
+# Arrange matches by date and choose an approximate 80% training boundary
+match_dates = (
+    team_matches[["match_id", "date"]]
+    .drop_duplicates()
+    .sort_values(["date", "match_id"])
+    .reset_index(drop=True)
+)
+
+split_position = int(len(match_dates) * 0.80)
+cutoff_date = match_dates.iloc[split_position]["date"]
+
+# Split earlier and later matches, keeping matches on the same date together
+train_data = team_matches.loc[
+    team_matches["date"] < cutoff_date
+].copy()
+
+test_data = team_matches.loc[
+    team_matches["date"] >= cutoff_date
+].copy()
+
+# Select the eight predictors (X) and actual goals scored (y)
+X_train = train_data[predictor_columns]
+y_train = train_data["goals_scored"]
+
+X_test = test_data[predictor_columns]
+y_test = test_data["goals_scored"]
+
+# Check that all rows are retained and no match appears in both sets
+assert len(train_data) + len(test_data) == 208
+assert train_data["date"].max() < test_data["date"].min()
+assert not train_data["match_id"].isin(test_data["match_id"]).any()
+
+# Display the training and test dataset sizes
+print("\nTraining and test split:")
+print("Test period starts:", cutoff_date.strftime("%Y-%m-%d"))
+print("Training matches:", train_data["match_id"].nunique())
+print("Test matches:", test_data["match_id"].nunique())
+print("X_train shape:", X_train.shape)
+print("X_test shape:", X_test.shape)
+    
