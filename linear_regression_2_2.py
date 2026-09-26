@@ -7,17 +7,26 @@ import pandas as pd
 import sys
 import matplotlib.pyplot as plt
 
-from sklearn.linear_model import LinearRegression
-from sklearn.dummy import DummyRegressor
-from sklearn.metrics import r2_score
+# Import tools for file handling, data preparation and plotting
+from pathlib import Path
+import sys
+import pandas as pd
+import matplotlib.pyplot as plt
 
+# Import regression models, scaling and validation tools
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.dummy import DummyRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 from sklearn.base import clone
 from sklearn.model_selection import TimeSeriesSplit
+
+# Import metrics for evaluating predictions
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-# Import tools and enable special characters in terminal output
+# # Load the World Cup dataset and preview its contents
 file_path = Path(__file__).parent / "world_cup_2026_data.csv"
 matches = pd.read_csv(file_path, comment="#")
 print(matches.head())
@@ -593,6 +602,13 @@ models = {
     "Linear regression": linear_model
 }
 
+# Compare four Ridge penalty strengths, with scaling fitted inside each fold
+for alpha in [0.1, 1.0, 10.0, 100.0]:
+    models[f"Ridge alpha={alpha}"] = make_pipeline(
+        StandardScaler(),
+        Ridge(alpha=alpha)
+    )
+
 validation_rows = []
 
 # Keep all rows from the same date together in each validation round
@@ -635,3 +651,44 @@ validation_results = pd.DataFrame(validation_rows)
 
 print("\nChronological validation results:")
 print(validation_results.round(3).to_string(index=False))
+
+# Combine validation errors, accounting for different fold sizes
+summary_rows = []
+
+for name, results in validation_results.groupby("Model"):
+    counts = results["Validation rows"]
+
+    pooled_rmse = (
+        (results["RMSE"] ** 2 * counts).sum() / counts.sum()
+    ) ** 0.5
+
+    pooled_mae = (
+        (results["MAE"] * counts).sum() / counts.sum()
+    )
+
+    summary_rows.append({
+        "Model": name,
+        "Validation RMSE": pooled_rmse,
+        "Validation MAE": pooled_mae
+    })
+
+# Rank models by validation RMSE and identify the best tested model
+validation_summary = (
+    pd.DataFrame(summary_rows)
+    .sort_values("Validation RMSE")
+    .reset_index(drop=True)
+)
+
+best_model_name = validation_summary.iloc[0]["Model"]
+
+print("\nOverall validation comparison:")
+print(validation_summary.round(3).to_string(index=False))
+print("\nSelected model:", best_model_name)
+
+# Save the fold results and overall comparison for the report
+validation_results.to_csv(
+    base_path / "validation_results.csv", index=False
+)
+validation_summary.to_csv(
+    base_path / "validation_summary.csv", index=False
+)
