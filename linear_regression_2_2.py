@@ -5,6 +5,7 @@ print("Linear Regression 2.2 Project")
 from pathlib import Path
 import pandas as pd
 import sys
+import matplotlib.pyplot as plt
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -481,4 +482,44 @@ print("Training matches:", train_data["match_id"].nunique())
 print("Test matches:", test_data["match_id"].nunique())
 print("X_train shape:", X_train.shape)
 print("X_test shape:", X_test.shape)
-    
+
+# Summarise the predictors and goals scored using only the training data
+eda_columns = predictor_columns + ["goals_scored"]
+
+print("\nTraining data summary:")
+print(train_data[eda_columns].describe().round(2).to_string())
+
+# Count how often teams scored each number of goals in the training data
+print("\nGoals scored frequency:")
+print(train_data["goals_scored"].value_counts().sort_index())
+
+# Plot how often each goal total occurs in the training data
+goal_counts = (
+    train_data["goals_scored"]
+    .value_counts()
+    .sort_index()
+)
+
+fig, ax = plt.subplots(figsize=(8, 5))
+
+bars = ax.bar(
+    goal_counts.index,
+    goal_counts.values,
+    color="#2878B5"
+)
+
+ax.set_title("Goals Scored per Team-Match — Training Data")
+ax.set_xlabel("Goals scored")
+ax.set_ylabel("Number of team-match rows")
+ax.set_xticks(goal_counts.index)
+ax.bar_label(bars, padding=3)
+ax.set_ylim(0, goal_counts.max() * 1.15)
+
+# Save the chart for the report and display it
+fig.tight_layout()
+fig.savefig(
+    base_path / "training_goals_distribution.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.show()
