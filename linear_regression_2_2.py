@@ -741,3 +741,45 @@ test_predictions.to_csv(
     base_path / "test_predictions.csv", index=False
 )
 
+# Compare actual goals with predictions from the selected model
+actual = test_predictions["goals_scored"]
+predicted = test_predictions[best_model_name]
+residuals = test_predictions["selected_model_residual"]
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+lower = min(0, actual.min(), predicted.min())
+upper = max(actual.max(), predicted.max()) + 0.5
+
+axes[0].scatter(actual, predicted, alpha=0.7, color="#2878B5")
+axes[0].plot(
+    [lower, upper], [lower, upper],
+    linestyle="--", color="black", label="Perfect prediction"
+)
+axes[0].set(
+    title="Actual vs Predicted Goals — Test Data",
+    xlabel="Actual goals",
+    ylabel="Predicted goals",
+    xlim=(lower, upper),
+    ylim=(lower, upper)
+)
+axes[0].legend()
+
+# Inspect whether prediction errors show a systematic pattern
+axes[1].scatter(predicted, residuals, alpha=0.7, color="#2878B5")
+axes[1].axhline(0, linestyle="--", color="black")
+axes[1].set(
+    title="Residuals — Test Data",
+    xlabel="Predicted goals",
+    ylabel="Actual minus predicted goals"
+)
+
+# Save the diagnostic plots for the report
+fig.tight_layout()
+fig.savefig(
+    base_path / "test_prediction_diagnostics.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.show()
+
