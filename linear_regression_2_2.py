@@ -692,3 +692,52 @@ validation_results.to_csv(
 validation_summary.to_csv(
     base_path / "validation_summary.csv", index=False
 )
+
+# Prepare the selected model and two comparison models for final evaluation
+final_models = {
+    "Mean baseline": models["Mean baseline"],
+    "Linear regression": models["Linear regression"],
+    best_model_name: models[best_model_name]
+}
+
+test_result_rows = []
+
+test_predictions = test_data[
+    ["match_id", "date", "team", "opponent", "goals_scored"]
+].copy()
+
+# Fit on all training rows and evaluate on the held-out test rows
+for name, model in final_models.items():
+    fitted_model = clone(model)
+    fitted_model.fit(X_train, y_train)
+
+    predictions = fitted_model.predict(X_test)
+    test_predictions[name] = predictions
+
+    test_result_rows.append({
+        "Model": name,
+        "Test R2": r2_score(y_test, predictions),
+        "Test MAE": mean_absolute_error(y_test, predictions),
+        "Test RMSE": mean_squared_error(y_test, predictions) ** 0.5
+    })
+
+# Calculate the selected model's residuals: actual minus predicted goals
+test_predictions["selected_model_residual"] = (
+    test_predictions["goals_scored"]
+    - test_predictions[best_model_name]
+)
+
+# Display and save the final metrics and individual predictions
+test_results = pd.DataFrame(test_result_rows)
+
+print("\nFinal test results:")
+print(test_results.round(3).to_string(index=False))
+print("\nModel selected before testing:", best_model_name)
+
+test_results.to_csv(
+    base_path / "test_results.csv", index=False
+)
+test_predictions.to_csv(
+    base_path / "test_predictions.csv", index=False
+)
+
