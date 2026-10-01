@@ -7,12 +7,6 @@ import pandas as pd
 import sys
 import matplotlib.pyplot as plt
 
-# Import tools for file handling, data preparation and plotting
-from pathlib import Path
-import sys
-import pandas as pd
-import matplotlib.pyplot as plt
-
 # Import regression models, scaling and validation tools
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.dummy import DummyRegressor
@@ -26,8 +20,17 @@ from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-# # Load the World Cup dataset and preview its contents
-file_path = Path(__file__).parent / "world_cup_2026_data.csv"
+# Define the input and output folders
+base_path = Path(__file__).resolve().parent
+data_path = base_path / "data"
+results_path = base_path / "results"
+figures_path = base_path / "figures"
+
+results_path.mkdir(exist_ok=True)
+figures_path.mkdir(exist_ok=True)
+
+# Load the World Cup dataset from the data folder
+file_path = data_path / "world_cup_2026_data.csv"
 matches = pd.read_csv(file_path, comment="#")
 print(matches.head())
 print("Raw rows", len(matches))
@@ -105,52 +108,6 @@ assert not team_matches.duplicated(["match_id", "team"]).any(), "Duplicate team 
 assert not team_matches.isna().any().any(), "Missing values found in the base dataset."
 
 print("\nBase dataset checks passed.")
-
-
-
-# Check pre-match predictor calculations using Mexico as an example
-# Load Mexico's historical results
-history_path = Path(__file__).parent / "Mexico_FIFA2026stats.csv"
-history = pd.read_csv(history_path, comment="#")
-history["Date"] = pd.to_datetime(history["Date"], errors="raise")
-
-# Calculate goal-based predictors from the five preceding matches
-def calculate_recent_form(team_history, match_date):
-    previous = team_history.loc[
-        (team_history["Date"] < match_date)
-        & team_history["GF"].notna()
-        & team_history["GA"].notna()
-    ].sort_values("Date").tail(5)
-
-    assert len(previous) == 5, "Five previous matches are required."
-
-    return {
-        "team_scored_last5": previous["GF"].mean(),
-        "team_conceded_last5": previous["GA"].mean(),
-        "team_scoring_std_last5": previous["GF"].std(ddof=1)
-    }
-
-# Check the predictors for each of Mexico's World Cup matches
-world_cup_dates = history.loc[
-    history["Comp"] == "World Cup", "Date"
-].sort_values()
-
-for match_date in world_cup_dates:
-    form = calculate_recent_form(history, match_date)
-
-    print("\nMexico — match date:", match_date.strftime("%Y-%m-%d"))
-    print(
-        "Predictor 4: Average goals scored:",
-        round(form["team_scored_last5"], 2)
-    )
-    print(
-        "Predictor 5: Average goals conceded:",
-        round(form["team_conceded_last5"], 2)
-    )
-    print(
-        "Predictor 8: Scoring consistency (SD):",
-        round(form["team_scoring_std_last5"], 2)
-    )
     
 # Load historical datasets used to calculate pre-match predictors
 base_path = Path(__file__).parent
@@ -170,7 +127,7 @@ history_files = [
 history_tables = []
 
 for filename in history_files:
-    table = pd.read_csv(base_path / filename, comment="#")
+    table = pd.read_csv(data_path / filename, comment="#")
     table["source_file"] = filename
     history_tables.append(table)
     print(filename, ":", len(table), "rows")
@@ -304,13 +261,6 @@ print("\nOpening-match history review:")
 print("Teams:", opening_last5["team"].nunique())
 print("Rows:", len(opening_last5))
 
-print(
-    opening_last5.loc[
-        opening_last5["team"] == "Mexico",
-        ["date", "team", "opponent", "goals_scored", "goals_conceded"]
-    ].to_string(index=False)
-)
-
 # Look up the opponent goals to obtain each team's goals conceded
 opponent_results = team_matches[
     ["match_id", "team", "goals_scored"]
@@ -371,14 +321,6 @@ def get_recent_form(team_name, match_date):
         "win_rate": wins.mean(),
         "clean_sheet_rate": clean_sheets.mean()
     }
-
-# Check that Mexico's first World Cup result contributes to its second match
-mexico_form = get_recent_form("Mexico", pd.Timestamp("2026-06-18"))
-
-print("\nMexico: predictors before 18 June 2026")
-print("Predictor 4: Average goals scored:", round(mexico_form["scored"], 2))
-print("Predictor 5: Average goals conceded:", round(mexico_form["conceded"], 2))
-print("Predictor 8: Scoring consistency (SD):", round(mexico_form["scoring_std"], 2))
 
 # Calculate predictors 2–8 for every World Cup team-match row
 form_rows = []
@@ -455,7 +397,7 @@ for number, column in enumerate(predictor_columns, start=1):
 
 print("\nAll eight predictors populated for 208 rows.")
 
-output_path = Path(__file__).parent / "team_matches_208_rows.csv"
+output_path = results_path / "team_matches_208_rows.csv"
 team_matches.to_csv(output_path, index=False, encoding="utf-8")
 print("Saved:", output_path)
 
@@ -735,10 +677,10 @@ print(test_results.round(3).to_string(index=False))
 print("\nModel selected before testing:", best_model_name)
 
 test_results.to_csv(
-    base_path / "test_results.csv", index=False
+    results_path / "test_results.csv", index=False
 )
 test_predictions.to_csv(
-    base_path / "test_predictions.csv", index=False
+    results_path / "test_predictions.csv", index=False
 )
 
 # Compare actual goals with predictions from the selected model
@@ -777,7 +719,7 @@ axes[1].set(
 # Save the diagnostic plots for the report
 fig.tight_layout()
 fig.savefig(
-    base_path / "test_prediction_diagnostics.png",
+    figures_path / "test_prediction_diagnostics.png",
     dpi=300,
     bbox_inches="tight"
 )
