@@ -782,4 +782,3 @@ fig.savefig(
     bbox_inches="tight"
 )
 plt.show()
-
