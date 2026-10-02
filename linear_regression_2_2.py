@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.base import clone
 from sklearn.model_selection import TimeSeriesSplit
+from sklearn.ensemble import RandomForestRegressor
 
 # Import metrics for evaluating predictions
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
@@ -539,9 +540,16 @@ print("Baseline prediction:", round(y_train.mean(), 3))
 training_dates = train_data["date"].drop_duplicates().sort_values().to_numpy()
 time_split = TimeSeriesSplit(n_splits=3)
 
+# Compare the baseline, linear regression and a tree-based ensemble
 models = {
     "Mean baseline": baseline_model,
-    "Linear regression": linear_model
+    "Linear regression": linear_model,
+    "Random forest": RandomForestRegressor(
+        n_estimators=300,
+        max_depth=3,
+        min_samples_leaf=5,
+        random_state=42
+    )
 }
 
 # Compare four Ridge penalty strengths, with scaling fitted inside each fold
@@ -635,13 +643,19 @@ validation_summary.to_csv(
     base_path / "validation_summary.csv", index=False
 )
 
-# Prepare the selected model and two comparison models for final evaluation
+# Identify the Ridge setting with the lowest validation RMSE
+best_ridge_name = validation_summary.loc[
+    validation_summary["Model"].str.startswith("Ridge alpha="),
+    "Model"
+].iloc[0]
+
+# Evaluate the baseline and each regression approach
 final_models = {
     "Mean baseline": models["Mean baseline"],
     "Linear regression": models["Linear regression"],
-    best_model_name: models[best_model_name]
+    best_ridge_name: models[best_ridge_name],
+    "Random forest": models["Random forest"]
 }
-
 test_result_rows = []
 
 test_predictions = test_data[
@@ -674,7 +688,7 @@ test_results = pd.DataFrame(test_result_rows)
 
 print("\nFinal test results:")
 print(test_results.round(3).to_string(index=False))
-print("\nModel selected before testing:", best_model_name)
+print("\nModel selected using chronological validation:", best_model_name)
 
 test_results.to_csv(
     results_path / "test_results.csv", index=False
