@@ -516,6 +516,78 @@ if strong_pairs:
     print(pd.DataFrame(strong_pairs).to_string(index=False))
 else:
     print("No predictor pairs reach this threshold.")
+
+# Explore how each predictor relates to goals using training data only
+predictor_labels = {
+    "is_knockout": "Match stage",
+    "team_win_rate_last5": "Team win rate — previous five matches",
+    "opponent_clean_sheet_rate_last5": "Opponent clean-sheet rate — previous five",
+    "team_scored_last5": "Team average goals scored — previous five",
+    "team_conceded_last5": "Team average goals conceded — previous five",
+    "opponent_scored_last5": "Opponent average goals scored — previous five",
+    "opponent_conceded_last5": "Opponent average goals conceded — previous five",
+    "team_scoring_std_last5": "Team scoring standard deviation — previous five"
+}
+
+fig, axes = plt.subplots(4, 2, figsize=(13, 16))
+
+for ax, column in zip(axes.flat, predictor_columns):
+
+    # Compare goal distributions between the two match stages
+    if column == "is_knockout":
+        group_goals = train_data.loc[
+            train_data[column] == 0, "goals_scored"
+        ]
+        knockout_goals = train_data.loc[
+            train_data[column] == 1, "goals_scored"
+        ]
+
+        ax.boxplot([group_goals, knockout_goals])
+        ax.set_xticks([1, 2])
+        ax.set_xticklabels([
+            f"Group stage\n(n={len(group_goals)})",
+            f"Knockout\n(n={len(knockout_goals)})"
+        ])
+
+    # Show numerical predictors against actual goals scored
+    else:
+        ax.scatter(
+            train_data[column],
+            train_data["goals_scored"],
+            alpha=0.4,
+            s=30,
+            color="#2878B5"
+        )
+
+        correlation = train_data[column].corr(
+            train_data["goals_scored"]
+        )
+
+        ax.text(
+            0.04, 0.94,
+            f"Pearson r = {correlation:.3f}",
+            transform=ax.transAxes,
+            va="top"
+        )
+
+    ax.set_title(predictor_labels[column], fontsize=10)
+    ax.set_ylabel("Actual goals scored")
+    ax.set_ylim(-0.5, train_data["goals_scored"].max() + 0.5)
+    ax.grid(axis="y", alpha=0.2)
+
+# Save the EDA figure for interpretation and reporting
+fig.suptitle(
+    "Pre-match Predictors and Goals Scored — Training Data",
+    fontsize=15
+)
+fig.tight_layout(rect=[0, 0, 1, 0.97], h_pad=3.0, w_pad=2.0)
+
+fig.savefig(
+    figures_path / "training_predictor_relationships.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.show()
     
 # Fit a baseline that predicts the average goals scored in the training data
 baseline_model = DummyRegressor(strategy="mean")
@@ -648,6 +720,52 @@ best_ridge_name = validation_summary.loc[
     validation_summary["Model"].str.startswith("Ridge alpha="),
     "Model"
 ].iloc[0]
+
+# Compare prediction errors across the three chronological validation folds
+comparison_models = [
+    "Mean baseline",
+    "Linear regression",
+    best_ridge_name,
+    "Random forest"
+]
+
+colours = ["#666666", "#2878B5", "#D55E00", "#009E73"]
+markers = ["o", "s", "^", "D"]
+
+fig, ax = plt.subplots(figsize=(9, 5))
+
+for name, colour, marker in zip(comparison_models, colours, markers):
+    fold_results = validation_results.loc[
+        validation_results["Model"] == name
+    ].sort_values("Fold")
+
+    ax.plot(
+        fold_results["Fold"],
+        fold_results["RMSE"],
+        label=name,
+        color=colour,
+        marker=marker,
+        linewidth=2,
+        markersize=7
+    )
+
+# Label the validation periods and explain the error measure
+ax.set_title("Model Performance Across Chronological Validation Folds")
+ax.set_xlabel("Validation fold — earlier to later")
+ax.set_ylabel("RMSE (goals; lower is better)")
+ax.set_xticks([1, 2, 3])
+ax.set_ylim(bottom=0)
+ax.grid(axis="y", alpha=0.25)
+ax.legend()
+
+# Save the comparison figure for the report
+fig.tight_layout()
+fig.savefig(
+    figures_path / "validation_rmse_by_fold.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.show()
 
 # Evaluate the baseline and each regression approach
 final_models = {
