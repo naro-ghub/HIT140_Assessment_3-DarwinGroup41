@@ -788,11 +788,20 @@ for name, model in final_models.items():
     predictions = fitted_model.predict(X_test)
     test_predictions[name] = predictions
 
+    # Calculate errors and normalise RMSE using the test goals range
+    mse = mean_squared_error(y_test, predictions)
+    rmse = mse ** 0.5
+    goals_range = y_test.max() - y_test.min()
+    nrmse = rmse / goals_range if goals_range > 0 else float("nan")
+
+    # Store the evaluation metrics for each model
     test_result_rows.append({
         "Model": name,
         "Test R2": r2_score(y_test, predictions),
         "Test MAE": mean_absolute_error(y_test, predictions),
-        "Test RMSE": mean_squared_error(y_test, predictions) ** 0.5
+        "Test MSE": mse,
+        "Test RMSE": rmse,
+        "Test NRMSE": nrmse
     })
 
 # Calculate the selected model's residuals: actual minus predicted goals
