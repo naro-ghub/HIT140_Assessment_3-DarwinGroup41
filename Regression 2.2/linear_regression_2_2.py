@@ -482,7 +482,7 @@ fig.savefig(
     dpi=300,
     bbox_inches="tight"
 )
-plt.show()
+plt.close(fig)
 
 # Examine linear relationships between the predictors and goals scored
 correlations = train_data[eda_columns].corr()
@@ -737,4 +737,4 @@ fig.savefig(
     dpi=300,
     bbox_inches="tight"
 )
-plt.show()
+plt.close(fig)
