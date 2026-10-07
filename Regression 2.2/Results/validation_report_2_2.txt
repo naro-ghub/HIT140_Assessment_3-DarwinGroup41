@@ -20,8 +20,8 @@ Predictors:
 8. team_scoring_std_last5
 
 Selected model from chronological validation: Ridge alpha=100.0
-            Model  Test R2  Test MAE  Test RMSE
-    Mean baseline  -0.0016    1.0654     1.3238
-Linear regression   0.0370    0.9742     1.2980
-Ridge alpha=100.0   0.0516    1.0005     1.2881
-    Random forest  -0.0015    1.0025     1.3237
+            Model  Test R2  Test MAE  Test MSE  Test RMSE  Test NRMSE
+    Mean baseline  -0.0016    1.0654    1.7523     1.3238      0.2206
+Linear regression   0.0370    0.9742    1.6847     1.2980      0.2163
+Ridge alpha=100.0   0.0516    1.0005    1.6592     1.2881      0.2147
+    Random forest  -0.0015    1.0025    1.7521     1.3237      0.2206
