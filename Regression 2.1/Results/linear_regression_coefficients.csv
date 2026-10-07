@@ -1,0 +1,10 @@
+Predictor,Coefficient
+win_rate_diff_last5,-1.347258066185638
+clean_sheet_rate_diff_last5,1.2892913286475767
+avg_goals_scored_diff_last5,1.1165657722506577
+avg_goals_conceded_diff_last5,0.5792515383629663
+draw_rate_diff_last5,-1.2635629969488198
+scoring_rate_diff_last5,0.805802876573361
+concede_2plus_rate_diff_last5,-2.2210424216246474
+goal_diff_std_diff_last5,-0.8833591044179602
+Intercept,0.3913344095054643

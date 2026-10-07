@@ -23,9 +23,9 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 # Define the input and output folders
 base_path = Path(__file__).resolve().parent
-data_path = base_path / "data"
-results_path = base_path / "results"
-figures_path = base_path / "figures"
+data_path = base_path / "Data" if (base_path / "Data").exists() else base_path / "data"
+results_path = base_path / "Results" if (base_path / "Results").exists() else base_path / "results"
+figures_path = base_path / "Figures" if (base_path / "Figures").exists() else base_path / "figures"
 
 results_path.mkdir(exist_ok=True)
 figures_path.mkdir(exist_ok=True)
@@ -478,7 +478,7 @@ ax.set_ylim(0, goal_counts.max() * 1.15)
 # Save the chart for the report and display it
 fig.tight_layout()
 fig.savefig(
-    base_path / "training_goals_distribution.png",
+    figures_path / "training_goals_distribution.png",
     dpi=300,
     bbox_inches="tight"
 )
@@ -637,10 +637,10 @@ print("\nSelected model:", best_model_name)
 
 # Save the fold results and overall comparison for the report
 validation_results.to_csv(
-    base_path / "validation_results.csv", index=False
+    results_path / "validation_results.csv", index=False
 )
 validation_summary.to_csv(
-    base_path / "validation_summary.csv", index=False
+    results_path / "validation_summary.csv", index=False
 )
 
 # Identify the Ridge setting with the lowest validation RMSE
@@ -738,3 +738,26 @@ fig.savefig(
     bbox_inches="tight"
 )
 plt.close(fig)
+
+# Generate automated text validation report
+report = []
+report.append("LINEAR REGRESSION 2.2 DATA VALIDATION REPORT")
+report.append("============================================")
+report.append(f"Team-match rows: {len(team_matches)} (required: 208)")
+report.append(f"Unique World Cup matches: {team_matches['match_id'].nunique()} (required: 104)")
+report.append(f"Unique participating teams: {team_matches['team'].nunique()}")
+report.append(f"Explanatory variables: {len(predictor_columns)} (required: exactly 8)")
+report.append(f"Missing predictor values: {team_matches[predictor_columns].isna().sum().sum()}")
+report.append("Penalty-shootout totals excluded; regulation/extra-time match goals used.")
+report.append("All pre-match form features use only matches completed before match date.")
+report.append("Maximum 4 concepts shared with Regression 2.1 (win rate, clean sheet rate, goals scored, goals conceded).")
+report.append("")
+report.append("Predictors:")
+for i, p in enumerate(predictor_columns, 1):
+    report.append(f"{i}. {p}")
+report.append("")
+report.append("Selected model from chronological validation: " + best_model_name)
+report.append(test_results.round(4).to_string(index=False))
+(results_path / "validation_report_2_2.txt").write_text("\n".join(report), encoding="utf-8")
+print("\nValidation report saved:", results_path / "validation_report_2_2.txt")
+print("Regression 2.2 completed successfully.")

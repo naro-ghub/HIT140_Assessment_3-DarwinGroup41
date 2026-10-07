@@ -19,8 +19,9 @@ base_path = Path(__file__).resolve().parent
 data_path = base_path / "data"
 if not data_path.exists():
     data_path = base_path
-results_path = base_path / "results_2_1"
-figures_path = base_path / "figures_2_1"
+data_path = base_path / "Data" if (base_path / "Data").exists() else base_path / "data"
+results_path = base_path / "Results" if (base_path / "Results").exists() else base_path / "results"
+figures_path = base_path / "Figures" if (base_path / "Figures").exists() else base_path / "figures"
 results_path.mkdir(exist_ok=True)
 figures_path.mkdir(exist_ok=True)
 
@@ -157,7 +158,6 @@ model_data = matches[[
 ] + predictor_columns].copy()
 model_data = model_data.rename(columns={"Round": "round"})
 model_data.to_csv(results_path / "match_goal_difference_104_rows.csv", index=False, encoding="utf-8")
-model_data.to_csv(base_path / "match_goal_difference_104_rows.csv", index=False, encoding="utf-8")
 
 print("\nDataset checks passed:")
 print("Rows:", len(model_data))
@@ -193,7 +193,6 @@ ax.bar_label(bars, padding=3)
 ax.set_ylim(0, gd_counts.max() * 1.18)
 fig.tight_layout()
 fig.savefig(figures_path / "training_goal_difference_distribution.png", dpi=300, bbox_inches="tight")
-fig.savefig(base_path / "training_goal_difference_distribution.png", dpi=300, bbox_inches="tight")
 plt.close(fig)
 
 # Correlations for review.
@@ -241,7 +240,6 @@ for fold, (train_idx, valid_idx) in enumerate(time_split.split(training_dates), 
 
 validation_results = pd.DataFrame(validation_rows)
 validation_results.to_csv(results_path / "validation_results_2_1.csv", index=False)
-validation_results.to_csv(base_path / "validation_results_2_1.csv", index=False)
 summary_rows = []
 for name, results in validation_results.groupby("Model"):
     counts = results["Validation rows"]
@@ -252,7 +250,6 @@ for name, results in validation_results.groupby("Model"):
     })
 validation_summary = pd.DataFrame(summary_rows).sort_values("Validation RMSE").reset_index(drop=True)
 validation_summary.to_csv(results_path / "validation_summary_2_1.csv", index=False)
-validation_summary.to_csv(base_path / "validation_summary_2_1.csv", index=False)
 best_model_name = validation_summary.iloc[0]["Model"]
 print("\nValidation summary:")
 print(validation_summary.round(3).to_string(index=False))
@@ -276,10 +273,8 @@ for name in final_names:
 
 test_results = pd.DataFrame(test_result_rows)
 test_results.to_csv(results_path / "test_results_2_1.csv", index=False)
-test_results.to_csv(base_path / "test_results_2_1.csv", index=False)
 test_predictions["selected_model_residual"] = test_predictions["goal_difference"] - test_predictions[best_model_name]
 test_predictions.to_csv(results_path / "test_predictions_2_1.csv", index=False)
-test_predictions.to_csv(base_path / "test_predictions_2_1.csv", index=False)
 print("\nFinal test results:")
 print(test_results.round(3).to_string(index=False))
 
@@ -299,7 +294,6 @@ axes[1].axhline(0, linestyle="--", color="black")
 axes[1].set(title="Residuals — Test Data", xlabel="Predicted goal difference", ylabel="Actual minus predicted")
 fig.tight_layout()
 fig.savefig(figures_path / "test_prediction_diagnostics_2_1.png", dpi=300, bbox_inches="tight")
-fig.savefig(base_path / "test_prediction_diagnostics_2_1.png", dpi=300, bbox_inches="tight")
 plt.close(fig)
 
 # Human-readable validation report.
@@ -322,7 +316,7 @@ for i, p in enumerate(predictor_columns, 1): report.append(f"{i}. {p}")
 report.append("")
 report.append("Selected model from chronological validation: " + best_model_name)
 report.append(test_results.round(4).to_string(index=False))
-(base_path / "validation_report_2_1.txt").write_text("\n".join(report), encoding="utf-8")
+(results_path / "validation_report_2_1.txt").write_text("\n".join(report), encoding="utf-8")
 
 print("\nRegression 2.1 completed successfully.")
 print("Main dataset: match_goal_difference_104_rows.csv")

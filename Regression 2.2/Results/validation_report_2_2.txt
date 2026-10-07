@@ -1,0 +1,27 @@
+LINEAR REGRESSION 2.2 DATA VALIDATION REPORT
+============================================
+Team-match rows: 208 (required: 208)
+Unique World Cup matches: 104 (required: 104)
+Unique participating teams: 48
+Explanatory variables: 8 (required: exactly 8)
+Missing predictor values: 0
+Penalty-shootout totals excluded; regulation/extra-time match goals used.
+All pre-match form features use only matches completed before match date.
+Maximum 4 concepts shared with Regression 2.1 (win rate, clean sheet rate, goals scored, goals conceded).
+
+Predictors:
+1. is_knockout
+2. team_win_rate_last5
+3. opponent_clean_sheet_rate_last5
+4. team_scored_last5
+5. team_conceded_last5
+6. opponent_scored_last5
+7. opponent_conceded_last5
+8. team_scoring_std_last5
+
+Selected model from chronological validation: Ridge alpha=100.0
+            Model  Test R2  Test MAE  Test RMSE
+    Mean baseline  -0.0016    1.0654     1.3238
+Linear regression   0.0370    0.9742     1.2980
+Ridge alpha=100.0   0.0516    1.0005     1.2881
+    Random forest  -0.0015    1.0025     1.3237
