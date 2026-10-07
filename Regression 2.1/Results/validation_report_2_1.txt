@@ -1,0 +1,28 @@
+LINEAR REGRESSION 2.1 DATA VALIDATION REPORT
+============================================
+World Cup match rows: 104 (required: 104)
+Unique match IDs: 104
+Explanatory variables: 8 (required: exactly 8)
+Missing predictor values: 0
+Duplicate match IDs: 0
+Penalty-shootout totals excluded from goal difference; match score after extra time is used.
+All eight predictors use only the five matches completed before the prediction match date.
+Predictors 1-4 share concepts with Regression 2.2; predictors 5-8 are distinct.
+World Cup fixture/results file was cross-checked against FIFA/FBref 2026 match results.
+Historical inputs are the supplied approved-source CSV files used by the group's Regression 2.2 workflow.
+
+Predictors:
+1. win_rate_diff_last5
+2. clean_sheet_rate_diff_last5
+3. avg_goals_scored_diff_last5
+4. avg_goals_conceded_diff_last5
+5. draw_rate_diff_last5
+6. scoring_rate_diff_last5
+7. concede_2plus_rate_diff_last5
+8. goal_diff_std_diff_last5
+
+Selected model from chronological validation: Ridge alpha=10.0
+            Model  Test R2  Test MAE  Test RMSE
+    Mean baseline  -0.1662    1.4656     1.7678
+Linear regression  -0.1399    1.4043     1.7478
+ Ridge alpha=10.0  -0.0130    1.3490     1.6476
