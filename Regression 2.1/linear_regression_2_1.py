@@ -204,6 +204,45 @@ correlations.to_csv(results_path / "training_correlations.csv")
 print("\nPredictor correlations with goal difference:")
 print(correlations["goal_difference"].drop("goal_difference").sort_values(ascending=False).round(3))
 
+# Additional EDA statistics for Section 3.1
+print("\n=== REGRESSION 2.1 EXPLORATORY DATA ANALYSIS ===")
+
+# Training outcome statistics
+goal_diff = train_data["goal_difference"]
+
+print(f"Training observations: {len(train_data)}")
+print(f"Testing observations: {len(test_data)}")
+print(f"Mean goal difference: {goal_diff.mean():.3f}")
+print(f"Minimum goal difference: {goal_diff.min()}")
+print(f"Maximum goal difference: {goal_diff.max()}")
+
+draws = (goal_diff == 0).sum()
+draw_percentage = draws / len(goal_diff) * 100
+
+print(f"Draws: {draws} ({draw_percentage:.1f}%)")
+
+# Strongest correlation with the outcome
+target_corr = correlations["goal_difference"].drop("goal_difference")
+strongest_predictor = target_corr.abs().idxmax()
+
+print("\nStrongest predictor-outcome correlation:")
+print(f"{strongest_predictor}: r = {target_corr[strongest_predictor]:.3f}")
+
+# Strongest correlations between explanatory variables
+predictor_corr = correlations.loc[predictor_columns, predictor_columns]
+
+upper_triangle = predictor_corr.where(
+    np.triu(np.ones(predictor_corr.shape), k=1).astype(bool)
+)
+
+strongest_pairs = (
+    upper_triangle.stack()
+    .sort_values(key=abs, ascending=False)
+)
+
+print("\nStrongest predictor-predictor correlations:")
+print(strongest_pairs.head(5).round(3))
+
 # Baseline, OLS linear regression, and Ridge alternatives.
 baseline_model = DummyRegressor(strategy="mean")
 linear_model = LinearRegression()
