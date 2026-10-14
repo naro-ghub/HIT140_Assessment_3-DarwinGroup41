@@ -194,6 +194,7 @@ ax.set_ylim(0, gd_counts.max() * 1.18)
 fig.tight_layout()
 fig.savefig(figures_path / "training_goal_difference_distribution.png", dpi=300, bbox_inches="tight")
 fig.savefig(base_path / "training_goal_difference_distribution.png", dpi=300, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 # Correlations for review.
@@ -300,6 +301,7 @@ axes[1].set(title="Residuals — Test Data", xlabel="Predicted goal difference",
 fig.tight_layout()
 fig.savefig(figures_path / "test_prediction_diagnostics_2_1.png", dpi=300, bbox_inches="tight")
 fig.savefig(base_path / "test_prediction_diagnostics_2_1.png", dpi=300, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 # Human-readable validation report.
