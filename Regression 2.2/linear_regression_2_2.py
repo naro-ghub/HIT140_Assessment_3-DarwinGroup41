@@ -23,9 +23,9 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 # Define the input and output folders
 base_path = Path(__file__).resolve().parent
-data_path = base_path / "data"
-results_path = base_path / "results"
-figures_path = base_path / "figures"
+data_path = base_path / "Data" if (base_path / "Data").exists() else base_path / "data"
+results_path = base_path / "Results" if (base_path / "Results").exists() else base_path / "results"
+figures_path = base_path / "Figures" if (base_path / "Figures").exists() else base_path / "figures"
 
 results_path.mkdir(exist_ok=True)
 figures_path.mkdir(exist_ok=True)
@@ -478,11 +478,11 @@ ax.set_ylim(0, goal_counts.max() * 1.15)
 # Save the chart for the report and display it
 fig.tight_layout()
 fig.savefig(
-    base_path / "training_goals_distribution.png",
+    figures_path / "training_goals_distribution.png",
     dpi=300,
     bbox_inches="tight"
 )
-plt.show()
+plt.close(fig)
 
 # Examine linear relationships between the predictors and goals scored
 correlations = train_data[eda_columns].corr()
@@ -516,6 +516,78 @@ if strong_pairs:
     print(pd.DataFrame(strong_pairs).to_string(index=False))
 else:
     print("No predictor pairs reach this threshold.")
+
+# Explore how each predictor relates to goals using training data only
+predictor_labels = {
+    "is_knockout": "Match stage",
+    "team_win_rate_last5": "Team win rate — previous five matches",
+    "opponent_clean_sheet_rate_last5": "Opponent clean-sheet rate — previous five",
+    "team_scored_last5": "Team average goals scored — previous five",
+    "team_conceded_last5": "Team average goals conceded — previous five",
+    "opponent_scored_last5": "Opponent average goals scored — previous five",
+    "opponent_conceded_last5": "Opponent average goals conceded — previous five",
+    "team_scoring_std_last5": "Team scoring standard deviation — previous five"
+}
+
+fig, axes = plt.subplots(4, 2, figsize=(13, 16))
+
+for ax, column in zip(axes.flat, predictor_columns):
+
+    # Compare goal distributions between the two match stages
+    if column == "is_knockout":
+        group_goals = train_data.loc[
+            train_data[column] == 0, "goals_scored"
+        ]
+        knockout_goals = train_data.loc[
+            train_data[column] == 1, "goals_scored"
+        ]
+
+        ax.boxplot([group_goals, knockout_goals])
+        ax.set_xticks([1, 2])
+        ax.set_xticklabels([
+            f"Group stage\n(n={len(group_goals)})",
+            f"Knockout\n(n={len(knockout_goals)})"
+        ])
+
+    # Show numerical predictors against actual goals scored
+    else:
+        ax.scatter(
+            train_data[column],
+            train_data["goals_scored"],
+            alpha=0.4,
+            s=30,
+            color="#2878B5"
+        )
+
+        correlation = train_data[column].corr(
+            train_data["goals_scored"]
+        )
+
+        ax.text(
+            0.04, 0.94,
+            f"Pearson r = {correlation:.3f}",
+            transform=ax.transAxes,
+            va="top"
+        )
+
+    ax.set_title(predictor_labels[column], fontsize=10)
+    ax.set_ylabel("Actual goals scored")
+    ax.set_ylim(-0.5, train_data["goals_scored"].max() + 0.5)
+    ax.grid(axis="y", alpha=0.2)
+
+# Save the EDA figure for interpretation and reporting
+fig.suptitle(
+    "Pre-match Predictors and Goals Scored — Training Data",
+    fontsize=15
+)
+fig.tight_layout(rect=[0, 0, 1, 0.97], h_pad=3.0, w_pad=2.0)
+
+fig.savefig(
+    figures_path / "training_predictor_relationships.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.show()
     
 # Fit a baseline that predicts the average goals scored in the training data
 baseline_model = DummyRegressor(strategy="mean")
@@ -637,10 +709,10 @@ print("\nSelected model:", best_model_name)
 
 # Save the fold results and overall comparison for the report
 validation_results.to_csv(
-    base_path / "validation_results.csv", index=False
+    results_path / "validation_results.csv", index=False
 )
 validation_summary.to_csv(
-    base_path / "validation_summary.csv", index=False
+    results_path / "validation_summary.csv", index=False
 )
 
 # Identify the Ridge setting with the lowest validation RMSE
@@ -648,6 +720,52 @@ best_ridge_name = validation_summary.loc[
     validation_summary["Model"].str.startswith("Ridge alpha="),
     "Model"
 ].iloc[0]
+
+# Compare prediction errors across the three chronological validation folds
+comparison_models = [
+    "Mean baseline",
+    "Linear regression",
+    best_ridge_name,
+    "Random forest"
+]
+
+colours = ["#666666", "#2878B5", "#D55E00", "#009E73"]
+markers = ["o", "s", "^", "D"]
+
+fig, ax = plt.subplots(figsize=(9, 5))
+
+for name, colour, marker in zip(comparison_models, colours, markers):
+    fold_results = validation_results.loc[
+        validation_results["Model"] == name
+    ].sort_values("Fold")
+
+    ax.plot(
+        fold_results["Fold"],
+        fold_results["RMSE"],
+        label=name,
+        color=colour,
+        marker=marker,
+        linewidth=2,
+        markersize=7
+    )
+
+# Label the validation periods and explain the error measure
+ax.set_title("Model Performance Across Chronological Validation Folds")
+ax.set_xlabel("Validation fold — earlier to later")
+ax.set_ylabel("RMSE (goals; lower is better)")
+ax.set_xticks([1, 2, 3])
+ax.set_ylim(bottom=0)
+ax.grid(axis="y", alpha=0.25)
+ax.legend()
+
+# Save the comparison figure for the report
+fig.tight_layout()
+fig.savefig(
+    figures_path / "validation_rmse_by_fold.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.show()
 
 # Evaluate the baseline and each regression approach
 final_models = {
@@ -670,11 +788,20 @@ for name, model in final_models.items():
     predictions = fitted_model.predict(X_test)
     test_predictions[name] = predictions
 
+    # Calculate errors and normalise RMSE using the test goals range
+    mse = mean_squared_error(y_test, predictions)
+    rmse = mse ** 0.5
+    goals_range = y_test.max() - y_test.min()
+    nrmse = rmse / goals_range if goals_range > 0 else float("nan")
+
+    # Store the evaluation metrics for each model
     test_result_rows.append({
         "Model": name,
         "Test R2": r2_score(y_test, predictions),
         "Test MAE": mean_absolute_error(y_test, predictions),
-        "Test RMSE": mean_squared_error(y_test, predictions) ** 0.5
+        "Test MSE": mse,
+        "Test RMSE": rmse,
+        "Test NRMSE": nrmse
     })
 
 # Calculate the selected model's residuals: actual minus predicted goals
@@ -737,4 +864,27 @@ fig.savefig(
     dpi=300,
     bbox_inches="tight"
 )
-plt.show()
+plt.close(fig)
+
+# Generate automated text validation report
+report = []
+report.append("LINEAR REGRESSION 2.2 DATA VALIDATION REPORT")
+report.append("============================================")
+report.append(f"Team-match rows: {len(team_matches)} (required: 208)")
+report.append(f"Unique World Cup matches: {team_matches['match_id'].nunique()} (required: 104)")
+report.append(f"Unique participating teams: {team_matches['team'].nunique()}")
+report.append(f"Explanatory variables: {len(predictor_columns)} (required: exactly 8)")
+report.append(f"Missing predictor values: {team_matches[predictor_columns].isna().sum().sum()}")
+report.append("Penalty-shootout totals excluded; regulation/extra-time match goals used.")
+report.append("All pre-match form features use only matches completed before match date.")
+report.append("Maximum 4 concepts shared with Regression 2.1 (win rate, clean sheet rate, goals scored, goals conceded).")
+report.append("")
+report.append("Predictors:")
+for i, p in enumerate(predictor_columns, 1):
+    report.append(f"{i}. {p}")
+report.append("")
+report.append("Selected model from chronological validation: " + best_model_name)
+report.append(test_results.round(4).to_string(index=False))
+(results_path / "validation_report_2_2.txt").write_text("\n".join(report), encoding="utf-8")
+print("\nValidation report saved:", results_path / "validation_report_2_2.txt")
+print("Regression 2.2 completed successfully.")
